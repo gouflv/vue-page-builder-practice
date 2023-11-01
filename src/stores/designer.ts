@@ -2,17 +2,16 @@ import { StaticMaterials } from '@/materials'
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
+export type ComponentTreeNodeId = string
+
 export type ComponentTreeNode = {
-  id: string
+  id: ComponentTreeNodeId
   materialName: string
   children?: ComponentTreeNode[]
 }
 
 export type CanvasBoundingBox = {
-  /**
-   * Tree node id
-   */
-  id: string
+  id: ComponentTreeNodeId
   rect: {
     left: number
     top: number
@@ -57,7 +56,7 @@ export const useDesigner = defineStore('designer', () => {
   const canvasRef = ref<HTMLElement | null>(null)
   const canvasBoundingBoxes = ref<CanvasBoundingBox[]>([])
 
-  function findTreeNode(id: string) {
+  function findTreeNode(id: ComponentTreeNodeId) {
     const queue = [canvasData.value]
     while (queue.length > 0) {
       const node = queue.shift()!
@@ -77,7 +76,10 @@ export const useDesigner = defineStore('designer', () => {
 
   const canvasSelectedComponent = ref<ComponentTreeNode | null>(null)
 
-  function setCanvasSelectedComponent(id: string) {
+  /**
+   * Set current selected component of canvas by tree node id
+   */
+  function setCanvasSelectedComponent(id: ComponentTreeNodeId) {
     canvasSelectedComponent.value = findTreeNode(id)
   }
 
