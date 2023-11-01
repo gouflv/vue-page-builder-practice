@@ -6,13 +6,20 @@
     }"
     :style="style"
     @click="onClick(data)"
-  ></div>
+  >
+    <div class="tools">
+      <Button type="primary" size="small" :icon="h(CopyOutlined)" />
+      <Button type="primary" size="small" :icon="h(DeleteOutlined)" />
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
 import { useDesigner, type CanvasBoundingBox } from '@/stores/designer'
+import { CopyOutlined, DeleteOutlined } from '@ant-design/icons-vue'
+import { Button } from 'ant-design-vue'
 import { storeToRefs } from 'pinia'
-import { computed, type PropType, type StyleValue } from 'vue'
+import { computed, h, type PropType, type StyleValue } from 'vue'
 
 const props = defineProps({
   data: {
@@ -52,6 +59,20 @@ function onClick(it: CanvasBoundingBox) {
 
   &.active {
     border: 2px solid #409eff;
+  }
+
+  .tools {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    transform: translateY(calc(100% + 4px));
+    display: none;
+    > * {
+      margin-left: 4px;
+    }
+  }
+  &.active .tools {
+    display: block;
   }
 }
 </style>
