@@ -1,13 +1,17 @@
 <template>
   <div
-    :ref="setNodeRef"
     class="box"
     :class="{
-      active: canvasSelectedComponent && canvasSelectedComponent.id === data.id
+      active: canvasSelectedComponent?.id === data.id
     }"
     :style="style"
     @click="onClick"
   >
+    {{ data.id }}
+
+    <DropArea :id="data.id" direction="top" />
+    <DropArea :id="data.id" direction="bottom" />
+
     <div class="tools">
       <Button type="primary" size="small" :icon="h(CopyOutlined)" />
       <Button type="primary" size="small" :icon="h(DeleteOutlined)" @click.stop="onRemove" />
@@ -21,7 +25,7 @@ import { CopyOutlined, DeleteOutlined } from '@ant-design/icons-vue'
 import { Button } from 'ant-design-vue'
 import { storeToRefs } from 'pinia'
 import { computed, h, type PropType, type StyleValue } from 'vue'
-import { useDrop } from 'vue3-dnd'
+import DropArea from './DropArea.vue'
 
 const props = defineProps({
   data: {
@@ -30,11 +34,9 @@ const props = defineProps({
   }
 })
 
-console.log('ControlBox', props.data.id)
-
 const designer = useDesigner()
 const { canvasSelectedComponent } = storeToRefs(designer)
-const { setCanvasSelectedComponent, findTreeNode, getMaterial, removeTreeNode } = designer
+const { setCanvasSelectedComponent, removeTreeNode } = designer
 
 const style = computed(() => {
   const { data } = props
@@ -45,29 +47,6 @@ const style = computed(() => {
     height: data.rect.height + 'px'
   }
   return value
-})
-
-const [collect, setNodeRef] = useDrop(() => {
-  const treeNode = findTreeNode(props.data.id)
-  const material = getMaterial(treeNode.materialName)
-
-  return {
-    accept: material.droppable?.accept ?? [],
-    collect: (monitor) => ({
-      isOver: monitor.isOver({ shallow: true })
-    }),
-    drop: (item, monitor) => {
-      const didDrop = monitor.didDrop()
-      if (didDrop) {
-        return
-      }
-
-      console.log('drop', item)
-      return {
-        id: props.data.id
-      }
-    }
-  }
 })
 
 function onClick() {

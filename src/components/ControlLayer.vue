@@ -7,10 +7,15 @@
 <script setup lang="ts">
 import { useDesigner } from '@/stores/designer'
 import { storeToRefs } from 'pinia'
+import { watchEffect } from 'vue'
 import ControlBox from './ControlBox.vue'
 
 const designer = useDesigner()
 const { canvasBoundingBoxes } = storeToRefs(designer)
+
+watchEffect(() => {
+  console.log('canvasBoundingBoxes', canvasBoundingBoxes.value)
+})
 </script>
 
 <style scoped>

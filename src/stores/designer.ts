@@ -57,7 +57,7 @@ export const useDesigner = defineStore('designer', () => {
   const canvasRef = ref<HTMLElement | null>(null)
   const canvasBoundingBoxes = ref<CanvasBoundingBox[]>([])
 
-  function findTreeNode(id: CanvasTreeNodeId): CanvasTreeNode {
+  function findTreeNode(id: CanvasTreeNodeId): CanvasTreeNode | null {
     const queue = [canvasData.value]
     while (queue.length > 0) {
       const node = queue.shift()!
@@ -68,20 +68,51 @@ export const useDesigner = defineStore('designer', () => {
         queue.push(...node.children)
       }
     }
-    throw new Error(`[findTreeNode]: Node ${id} not found`)
+    // throw new Error(`[findTreeNode]: Node ${id} not found`)
+    return null
+  }
+
+  function findParentNode(id: CanvasTreeNodeId): CanvasTreeNode | null {
+    const queue = [canvasData.value]
+    while (queue.length > 0) {
+      const node = queue.shift()!
+      if (node.children) {
+        const index = node.children.findIndex((child) => child.id === id)
+        if (index !== -1) {
+          return node
+        }
+        queue.push(...node.children)
+      }
+    }
+    // throw new Error(`[findParentNode]: Node ${id} not found`)
+    return null
+  }
+
+  function getIndexOfNode(id: CanvasTreeNodeId): number {
+    const parent = findParentNode(id)
+    if (!parent) {
+      throw new Error(`[getIndexOfNode]: Node ${id} not found`)
+    }
+    return parent.children!.findIndex((child) => child.id === id)
   }
 
   function insertChildMaterial(source: MaterialName, target: CanvasTreeNodeId, index?: number) {
     console.log('appendChildMaterial', source, target)
 
     const targetNode = findTreeNode(target)
+    if (!targetNode) {
+      return
+    }
+
     if (!targetNode.children) {
       targetNode.children = []
     }
+
     const newNode: CanvasTreeNode = {
       id: nanoid(),
       materialName: source
     }
+
     if (index === undefined) {
       targetNode.children.push(newNode)
     } else {
@@ -128,6 +159,8 @@ export const useDesigner = defineStore('designer', () => {
     canvasRef,
     canvasBoundingBoxes,
     findTreeNode,
+    findParentNode,
+    getIndexOfNode,
     insertChildMaterial,
     removeTreeNode,
 

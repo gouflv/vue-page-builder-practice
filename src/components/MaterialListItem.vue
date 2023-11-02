@@ -25,7 +25,6 @@ const [collect, setNodeRef] = useDrag(() => {
   return {
     type: props.data.type,
     item: () => ({
-      from: 'material',
       name: props.data.name
     }),
     options: {
@@ -34,13 +33,13 @@ const [collect, setNodeRef] = useDrag(() => {
     end: (item, monitor) => {
       const dropResult = monitor.getDropResult<DropResult>()
 
-      console.log('drop', item, dropResult)
+      console.log('[Material]: drop', item, dropResult)
 
       if (!dropResult) {
         return
       }
 
-      insertChildMaterial(item.name, dropResult.id)
+      insertChildMaterial(item.name, dropResult.id, dropResult.index)
     },
     collect: (monitor) => ({
       isDragging: monitor.isDragging()
