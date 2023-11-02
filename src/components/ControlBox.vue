@@ -1,15 +1,16 @@
 <template>
   <div
+    :ref="setNodeRef"
     class="box"
     :class="{
       active: canvasSelectedComponent && canvasSelectedComponent.id === data.id
     }"
     :style="style"
-    @click="onClick(data)"
+    @click="onClick"
   >
     <div class="tools">
       <Button type="primary" size="small" :icon="h(CopyOutlined)" />
-      <Button type="primary" size="small" :icon="h(DeleteOutlined)" />
+      <Button type="primary" size="small" :icon="h(DeleteOutlined)" @click.stop="onRemove" />
     </div>
   </div>
 </template>
@@ -20,6 +21,7 @@ import { CopyOutlined, DeleteOutlined } from '@ant-design/icons-vue'
 import { Button } from 'ant-design-vue'
 import { storeToRefs } from 'pinia'
 import { computed, h, type PropType, type StyleValue } from 'vue'
+import { useDrop } from 'vue3-dnd'
 
 const props = defineProps({
   data: {
@@ -28,9 +30,11 @@ const props = defineProps({
   }
 })
 
+console.log('ControlBox', props.data.id)
+
 const designer = useDesigner()
 const { canvasSelectedComponent } = storeToRefs(designer)
-const { setCanvasSelectedComponent } = designer
+const { setCanvasSelectedComponent, findTreeNode, getMaterial, removeTreeNode } = designer
 
 const style = computed(() => {
   const { data } = props
@@ -43,15 +47,41 @@ const style = computed(() => {
   return value
 })
 
-function onClick(it: CanvasBoundingBox) {
-  setCanvasSelectedComponent(it.id)
+const [collect, setNodeRef] = useDrop(() => {
+  const treeNode = findTreeNode(props.data.id)
+  const material = getMaterial(treeNode.materialName)
+
+  return {
+    accept: material.droppable?.accept ?? [],
+    collect: (monitor) => ({
+      isOver: monitor.isOver({ shallow: true })
+    }),
+    drop: (item, monitor) => {
+      const didDrop = monitor.didDrop()
+      if (didDrop) {
+        return
+      }
+
+      console.log('drop', item)
+      return {
+        id: props.data.id
+      }
+    }
+  }
+})
+
+function onClick() {
+  setCanvasSelectedComponent(props.data.id)
+}
+
+function onRemove() {
+  removeTreeNode(props.data.id)
 }
 </script>
 
 <style scoped>
 .box {
   position: absolute;
-  cursor: pointer;
 
   &:hover:not(.active) {
     border: 1px dashed #409eff;

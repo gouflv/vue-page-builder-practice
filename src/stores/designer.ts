@@ -1,17 +1,18 @@
-import { StaticMaterials } from '@/materials'
+import { StaticMaterials, type MaterialName } from '@/materials'
+import { nanoid } from 'nanoid'
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
-export type ComponentTreeNodeId = string
+export type CanvasTreeNodeId = string
 
-export type ComponentTreeNode = {
-  id: ComponentTreeNodeId
-  materialName: string
-  children?: ComponentTreeNode[]
+export type CanvasTreeNode = {
+  id: CanvasTreeNodeId
+  materialName: MaterialName
+  children?: CanvasTreeNode[]
 }
 
 export type CanvasBoundingBox = {
-  id: ComponentTreeNodeId
+  id: CanvasTreeNodeId
   rect: {
     left: number
     top: number
@@ -27,7 +28,7 @@ export const useDesigner = defineStore('designer', () => {
 
   const materials = ref(StaticMaterials)
 
-  function getMaterial(name: string) {
+  function getMaterial(name: MaterialName) {
     const material = StaticMaterials.find((material) => material.name === name)
     if (!material) {
       throw new Error(`Material ${name} not found`)
@@ -38,7 +39,7 @@ export const useDesigner = defineStore('designer', () => {
   //
   // Canvas
   //
-  const canvasData = ref<ComponentTreeNode>({
+  const canvasData = ref<CanvasTreeNode>({
     id: '0',
     materialName: 'Page',
     children: [
@@ -56,7 +57,7 @@ export const useDesigner = defineStore('designer', () => {
   const canvasRef = ref<HTMLElement | null>(null)
   const canvasBoundingBoxes = ref<CanvasBoundingBox[]>([])
 
-  function findTreeNode(id: ComponentTreeNodeId) {
+  function findTreeNode(id: CanvasTreeNodeId): CanvasTreeNode {
     const queue = [canvasData.value]
     while (queue.length > 0) {
       const node = queue.shift()!
@@ -67,19 +68,55 @@ export const useDesigner = defineStore('designer', () => {
         queue.push(...node.children)
       }
     }
-    throw new Error(`Node ${id} not found`)
+    throw new Error(`[findTreeNode]: Node ${id} not found`)
+  }
+
+  function insertChildMaterial(source: MaterialName, target: CanvasTreeNodeId, index?: number) {
+    console.log('appendChildMaterial', source, target)
+
+    const targetNode = findTreeNode(target)
+    if (!targetNode.children) {
+      targetNode.children = []
+    }
+    const newNode: CanvasTreeNode = {
+      id: nanoid(),
+      materialName: source
+    }
+    if (index === undefined) {
+      targetNode.children.push(newNode)
+    } else {
+      targetNode.children.splice(index, 0, newNode)
+    }
+  }
+
+  function removeTreeNode(id: CanvasTreeNodeId) {
+    console.log('removeTreeNode', id)
+
+    const queue = [canvasData.value]
+    while (queue.length > 0) {
+      const node = queue.shift()!
+      if (node.children) {
+        const index = node.children.findIndex((child) => child.id === id)
+        if (index !== -1) {
+          node.children.splice(index, 1)
+          return
+        }
+        queue.push(...node.children)
+      }
+    }
+    throw new Error(`[removeTreeNode]: Node ${id} not found`)
   }
 
   //
   // Canvas states
   //
 
-  const canvasSelectedComponent = ref<ComponentTreeNode | null>(null)
+  const canvasSelectedComponent = ref<CanvasTreeNode | null>(null)
 
   /**
    * Set current selected component of canvas by tree node id
    */
-  function setCanvasSelectedComponent(id: ComponentTreeNodeId) {
+  function setCanvasSelectedComponent(id: CanvasTreeNodeId) {
     canvasSelectedComponent.value = findTreeNode(id)
   }
 
@@ -91,6 +128,8 @@ export const useDesigner = defineStore('designer', () => {
     canvasRef,
     canvasBoundingBoxes,
     findTreeNode,
+    insertChildMaterial,
+    removeTreeNode,
 
     canvasSelectedComponent,
     setCanvasSelectedComponent

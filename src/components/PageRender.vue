@@ -1,7 +1,8 @@
 <script lang="tsx">
-import { useDesigner, type ComponentTreeNode } from '@/stores/designer'
+import { useDesigner, type CanvasTreeNode } from '@/stores/designer'
+import { useMounted } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
-import { defineComponent, h, onMounted, ref, unref, type VNode } from 'vue'
+import { defineComponent, h, onBeforeUpdate, ref, unref, watch, type VNode } from 'vue'
 
 export default defineComponent({
   setup() {
@@ -12,6 +13,8 @@ export default defineComponent({
     const nodeRefs = ref<Record<string, VNode>>({})
 
     function setBoundingBoxes() {
+      console.log('[PageRender]: setBoundingBoxes', nodeRefs.value)
+
       canvasBoundingBoxes.value = []
 
       const parentRect = canvasRef.value!.getBoundingClientRect()
@@ -33,11 +36,26 @@ export default defineComponent({
       })
     }
 
-    onMounted(() => {
-      setBoundingBoxes()
+    const isMounted = useMounted()
+    watch(
+      [canvasData, isMounted],
+      async () => {
+        if (isMounted.value) {
+          setBoundingBoxes()
+        }
+      },
+      {
+        immediate: true,
+        deep: true,
+        flush: 'post'
+      }
+    )
+
+    onBeforeUpdate(() => {
+      nodeRefs.value = {}
     })
 
-    function renderTreeNode(treeNode: ComponentTreeNode): VNode {
+    function renderTreeNode(treeNode: CanvasTreeNode): VNode {
       const { component } = getMaterial(treeNode.materialName)
 
       const children = treeNode.children?.map((child) => renderTreeNode(child)) ?? []
@@ -49,7 +67,14 @@ export default defineComponent({
 
     const root = unref(canvasData)
 
-    return () => h('div', renderTreeNode(root))
+    return () =>
+      h(
+        'div',
+        {
+          class: 'renderer'
+        },
+        renderTreeNode(root)
+      )
   }
 })
 </script>

@@ -1,5 +1,5 @@
 <template>
-  <div class="layer">
+  <div class="control-layer">
     <ControlBox v-for="it in canvasBoundingBoxes" :key="it.id" :data="it" />
   </div>
 </template>
@@ -14,11 +14,8 @@ const { canvasBoundingBoxes } = storeToRefs(designer)
 </script>
 
 <style scoped>
-.layer {
+.control-layer {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  inset: 0;
 }
 </style>
