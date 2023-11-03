@@ -7,5 +7,6 @@ export default defineMaterial({
   component: PageVue,
   droppable: {
     accept: ['Section', 'Block']
-  }
+  },
+  canDrag: false
 })

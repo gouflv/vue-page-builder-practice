@@ -3,7 +3,7 @@
     :ref="setNodeRef"
     class="box"
     :class="{
-      active: canvasSelectedComponent?.id === data.id
+      active: isActive
     }"
     :style="style"
     @click="onClick"
@@ -13,8 +13,8 @@
     <DropArea :id="data.id" direction="top" />
     <DropArea :id="data.id" direction="bottom" />
 
-    <div class="tools">
-      <Button type="primary" size="small" :icon="h(CopyOutlined)" />
+    <div v-if="showTools" class="tools">
+      <Button type="primary" size="small" :icon="h(CopyOutlined)" @click.stop="onDuplicateClick" />
       <Button type="primary" size="small" :icon="h(DeleteOutlined)" @click.stop="onRemove" />
     </div>
   </div>
@@ -42,11 +42,20 @@ const props = defineProps({
 
 const designer = useDesigner()
 const { canvasSelectedComponent } = storeToRefs(designer)
-const { setCanvasSelectedComponent, removeTreeNode, findTreeNode, getMaterial, moveTreeNode } =
-  designer
+const {
+  setCanvasSelectedComponent,
+  removeTreeNode,
+  findTreeNode,
+  getMaterial,
+  moveTreeNode,
+  duplicateTreeNode
+} = designer
 
 const treeNode = findTreeNode(props.data.id)
 const material = getMaterial(treeNode.materialName)
+const showTools = material.type !== 'Page'
+const canDrag = material.canDrag ?? true
+const isActive = computed(() => canvasSelectedComponent.value?.id === props.data.id)
 
 const style = computed(() => {
   const { data } = props
@@ -54,7 +63,8 @@ const style = computed(() => {
     top: data.rect.top + 'px',
     left: data.rect.left + 'px',
     width: data.rect.width + 'px',
-    height: data.rect.height + 'px'
+    height: data.rect.height + 'px',
+    zIndex: showTools && isActive.value ? 1000 : 0
   }
   return value
 })
@@ -67,9 +77,14 @@ function onRemove() {
   removeTreeNode(props.data.id)
 }
 
+function onDuplicateClick() {
+  duplicateTreeNode(props.data.id)
+}
+
 // Sortable
 const [collect, setNodeRef] = useDrag(() => {
   return {
+    canDrag,
     type: material.type,
     item: (): DragItemFromCanvas => ({
       from: 'canvas',

@@ -1,5 +1,6 @@
 import { StaticMaterials, type MaterialName } from '@/materials'
 import debug from 'debug'
+import { cloneDeep } from 'lodash-es'
 import { nanoid } from 'nanoid'
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
@@ -100,6 +101,16 @@ export const useDesigner = defineStore('designer', () => {
   function insertChildMaterial(source: MaterialName, target: CanvasTreeNodeId, index?: number) {
     log(`appendChildMaterial(source: ${source}, target: ${target}, index: ${index})`)
 
+    const newNode: CanvasTreeNode = {
+      id: nanoid(),
+      materialName: source
+    }
+    insertTreeNode(newNode, target, index)
+  }
+
+  function insertTreeNode(node: CanvasTreeNode, target: CanvasTreeNodeId, index?: number) {
+    log(`insertTreeNode(node: ${node}, target: ${target}, index: ${index})`)
+
     const targetNode = findTreeNode(target)
     if (!targetNode) {
       return
@@ -109,21 +120,24 @@ export const useDesigner = defineStore('designer', () => {
       targetNode.children = []
     }
 
-    const newNode: CanvasTreeNode = {
-      id: nanoid(),
-      materialName: source
-    }
-
     if (index === undefined) {
       // Insert to head
-      targetNode.children.unshift(newNode)
+      targetNode.children.unshift(node)
     } else {
-      targetNode.children.splice(index, 0, newNode)
+      targetNode.children.splice(index, 0, node)
     }
   }
 
   function removeTreeNode(id: CanvasTreeNodeId) {
     log(`removeTreeNode(node: ${id})`)
+
+    // Select nearly node or Root
+    const nearlyNode = findNearlyNode(id)
+    if (nearlyNode) {
+      setCanvasSelectedComponent(nearlyNode.id)
+    } else {
+      setCanvasSelectedComponent(canvasData.value.id)
+    }
 
     const queue = [canvasData.value]
     while (queue.length > 0) {
@@ -156,6 +170,48 @@ export const useDesigner = defineStore('designer', () => {
     }
   }
 
+  function duplicateTreeNode(source: CanvasTreeNodeId) {
+    log(`duplicateTreeNode(source: ${source})`)
+
+    const sourceNode = findTreeNode(source)
+    const targetNode = findParentNode(source)
+    const index = getIndexOfNode(source)
+
+    if (!targetNode) {
+      throw new Error(`[duplicateTreeNode]: Parent Node ${source} not found`)
+    }
+
+    const newNode: CanvasTreeNode = {
+      ...cloneDeep(sourceNode),
+      id: nanoid()
+    }
+
+    console.log(newNode, targetNode, index)
+
+    insertTreeNode(newNode, targetNode!.id, index + 1)
+  }
+
+  function findNearlyNode(id: CanvasTreeNodeId): CanvasTreeNode | null {
+    const parent = findParentNode(id)
+    if (!parent) {
+      return null
+    }
+    const index = getIndexOfNode(id)
+    if (index === -1) {
+      return null
+    }
+    // find next
+    if (index + 1 < parent.children!.length) {
+      return parent.children![index + 1]
+    }
+    // find previous
+    if (index - 1 >= 0) {
+      return parent.children![index - 1]
+    }
+
+    return parent
+  }
+
   //
   // Canvas states
   //
@@ -166,10 +222,15 @@ export const useDesigner = defineStore('designer', () => {
     canvasSelectedComponent.value = findTreeNode(id)
   }
 
-  const currentActiveDropArea = ref<{
+  type ActiveDropArea = {
     id: CanvasTreeNodeId
     direction: 'top' | 'bottom'
-  } | null>(null)
+  }
+  const currentActiveDropArea = ref<ActiveDropArea | null>(null)
+
+  function setCurrentActiveDropArea(curr: ActiveDropArea) {
+    currentActiveDropArea.value = curr
+  }
 
   return {
     materials,
@@ -184,8 +245,11 @@ export const useDesigner = defineStore('designer', () => {
     insertChildMaterial,
     removeTreeNode,
     moveTreeNode,
+    duplicateTreeNode,
 
     canvasSelectedComponent,
-    setCanvasSelectedComponent
+    setCanvasSelectedComponent,
+    currentActiveDropArea,
+    setCurrentActiveDropArea
   }
 })

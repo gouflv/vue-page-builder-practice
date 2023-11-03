@@ -28,7 +28,7 @@ const props = defineProps({
 })
 
 const designer = useDesigner()
-const { getMaterial, findTreeNode, findParentNode } = designer
+const { getMaterial, findTreeNode, findParentNode, setCurrentActiveDropArea } = designer
 
 const treeNode = findTreeNode(props.id)
 const parentNode = findParentNode(props.id)
@@ -58,6 +58,7 @@ const [collect, setNodeRef] = useDrop(() => {
   // - if not, append item to the children of the parent node by index
   //
   // 2. Sort mode
+  // same as copy mode
   //
 
   const accept: MaterialType[] = ['Section', 'Block']
@@ -69,8 +70,7 @@ const [collect, setNodeRef] = useDrop(() => {
         return true
       }
 
-      // Move mode
-      // - skip drop if drop target is self
+      // Move mode ONLY: skip drop if drop target is self
       const item = _item as DragItemFromCanvas
       const dropTargetId = props.id
       const sourceId = item.id
@@ -86,6 +86,13 @@ const [collect, setNodeRef] = useDrop(() => {
         return null
       }
 
+      //
+      setCurrentActiveDropArea({
+        id: props.id,
+        direction: props.direction
+      })
+
+      //
       if (isDroppable) {
         return {
           id: props.id

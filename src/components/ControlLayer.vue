@@ -22,5 +22,6 @@ watchEffect(() => {
 .control-layer {
   position: absolute;
   inset: 0;
+  z-index: 1000;
 }
 </style>

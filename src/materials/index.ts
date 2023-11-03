@@ -13,6 +13,7 @@ export type MaterialDecoration = {
   droppable?: {
     accept: MaterialType[]
   }
+  canDrag?: boolean
 }
 
 export const StaticMaterials = [Page, InputField]
