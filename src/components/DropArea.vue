@@ -10,10 +10,10 @@
 </template>
 
 <script setup lang="ts">
+import type { MaterialType } from '@/materials'
 import { useDesigner, type CanvasTreeNodeId } from '@/stores/designer'
-import { type DropResult } from '@/type'
-import { toRefs } from '@vueuse/core'
-import { type PropType } from 'vue'
+import { isDragItemFromMaterial, type DragItemFromCanvas, type DropResult } from '@/type'
+import { computed, type PropType } from 'vue'
 import { useDrop } from 'vue3-dnd'
 
 const props = defineProps({
@@ -32,16 +32,18 @@ const { getMaterial, findTreeNode, findParentNode } = designer
 
 const treeNode = findTreeNode(props.id)
 const parentNode = findParentNode(props.id)
+const material = getMaterial(treeNode.materialName)
+const isDroppable = !!material.droppable
 
 function getDropIndex() {
-  if (!treeNode || !parentNode) {
+  if (!parentNode?.children) {
     return 0
   }
   const index = parentNode.children?.indexOf(treeNode)
   if (index === -1) {
     return 0
   }
-  return index
+  return props.direction === 'top' ? index : index + 1
 }
 
 const [collect, setNodeRef] = useDrop(() => {
@@ -51,17 +53,33 @@ const [collect, setNodeRef] = useDrop(() => {
     }
   }
 
-  const material = getMaterial(treeNode.materialName)
-  const isDroppable = !!material.droppable
+  // 1. Copy mode
+  // - if material is droppable, append item to the end of children of the node
+  // - if not, append item to the children of the parent node by index
+  //
+  // 2. Sort mode
+  //
 
-  // Mode:
-  // 1. Copy
-  // 2. Sort
+  const accept: MaterialType[] = ['Section', 'Block']
 
   return {
-    accept: ['Block'],
+    accept,
+    canDrop(_item) {
+      if (isDragItemFromMaterial(_item as any)) {
+        return true
+      }
+
+      // Move mode
+      // - skip drop if drop target is self
+      const item = _item as DragItemFromCanvas
+      const dropTargetId = props.id
+      const sourceId = item.id
+      if (dropTargetId === sourceId) return false
+
+      return true
+    },
     drop: (item, monitor): DropResult | null => {
-      console.log('[DropArea]: drop', item)
+      console.log('[DropArea]: over', item)
 
       const didDrop = monitor.didDrop()
       if (didDrop) {
@@ -80,17 +98,30 @@ const [collect, setNodeRef] = useDrop(() => {
       }
     },
     collect: (monitor) => ({
-      isOver: monitor.isOver({ shallow: true })
+      isOver: monitor.isOver({ shallow: true }),
+      canDrop: monitor.canDrop()
     })
   }
 })
 
-const { isOver } = toRefs(collect)
+// TODO
+// Indicator state:
+// - if over is droppable
+//   - if children is empty, active top drop-area indicator
+//   - if not, active bottom drop-area of the last child
+// - if over is child of droppable
+//   - active top drop-area priority
+//   - active bottom drop-area if over the last child
+
+const isOver = computed(() => {
+  return collect.value.isOver && collect.value.canDrop
+})
 </script>
 
 <style scoped>
 .drop-area {
   position: absolute;
+  user-select: none;
   &.top {
     top: 0;
     left: 0;

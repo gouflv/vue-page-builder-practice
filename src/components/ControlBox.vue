@@ -1,5 +1,6 @@
 <template>
   <div
+    :ref="setNodeRef"
     class="box"
     :class="{
       active: canvasSelectedComponent?.id === data.id
@@ -21,11 +22,16 @@
 
 <script setup lang="ts">
 import { useDesigner, type CanvasBoundingBox } from '@/stores/designer'
+import { type DragItemFromCanvas, type DropResult } from '@/type'
 import { CopyOutlined, DeleteOutlined } from '@ant-design/icons-vue'
 import { Button } from 'ant-design-vue'
+import debug from 'debug'
 import { storeToRefs } from 'pinia'
 import { computed, h, type PropType, type StyleValue } from 'vue'
+import { useDrag } from 'vue3-dnd'
 import DropArea from './DropArea.vue'
+
+const log = debug('designer:control-box')
 
 const props = defineProps({
   data: {
@@ -36,7 +42,11 @@ const props = defineProps({
 
 const designer = useDesigner()
 const { canvasSelectedComponent } = storeToRefs(designer)
-const { setCanvasSelectedComponent, removeTreeNode } = designer
+const { setCanvasSelectedComponent, removeTreeNode, findTreeNode, getMaterial, moveTreeNode } =
+  designer
+
+const treeNode = findTreeNode(props.data.id)
+const material = getMaterial(treeNode.materialName)
 
 const style = computed(() => {
   const { data } = props
@@ -56,6 +66,32 @@ function onClick() {
 function onRemove() {
   removeTreeNode(props.data.id)
 }
+
+// Sortable
+const [collect, setNodeRef] = useDrag(() => {
+  return {
+    type: material.type,
+    item: (): DragItemFromCanvas => ({
+      from: 'canvas',
+      id: treeNode.id,
+      name: material.name
+    }),
+    end: (item, monitor) => {
+      const dropResult = monitor.getDropResult<DropResult>()
+
+      log('drop end', item, dropResult)
+
+      if (!dropResult) {
+        return
+      }
+
+      moveTreeNode(item.id, dropResult.id, dropResult.index)
+    },
+    collect: (monitor) => ({
+      isDragging: monitor.isDragging()
+    })
+  }
+})
 </script>
 
 <style scoped>

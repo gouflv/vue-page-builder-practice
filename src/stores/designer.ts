@@ -1,7 +1,10 @@
 import { StaticMaterials, type MaterialName } from '@/materials'
+import debug from 'debug'
 import { nanoid } from 'nanoid'
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+
+const log = debug('designer:store')
 
 export type CanvasTreeNodeId = string
 
@@ -57,7 +60,7 @@ export const useDesigner = defineStore('designer', () => {
   const canvasRef = ref<HTMLElement | null>(null)
   const canvasBoundingBoxes = ref<CanvasBoundingBox[]>([])
 
-  function findTreeNode(id: CanvasTreeNodeId): CanvasTreeNode | null {
+  function findTreeNode(id: CanvasTreeNodeId): CanvasTreeNode {
     const queue = [canvasData.value]
     while (queue.length > 0) {
       const node = queue.shift()!
@@ -68,8 +71,7 @@ export const useDesigner = defineStore('designer', () => {
         queue.push(...node.children)
       }
     }
-    // throw new Error(`[findTreeNode]: Node ${id} not found`)
-    return null
+    throw new Error(`[findTreeNode]: Node ${id} not found`)
   }
 
   function findParentNode(id: CanvasTreeNodeId): CanvasTreeNode | null {
@@ -84,7 +86,6 @@ export const useDesigner = defineStore('designer', () => {
         queue.push(...node.children)
       }
     }
-    // throw new Error(`[findParentNode]: Node ${id} not found`)
     return null
   }
 
@@ -97,7 +98,7 @@ export const useDesigner = defineStore('designer', () => {
   }
 
   function insertChildMaterial(source: MaterialName, target: CanvasTreeNodeId, index?: number) {
-    console.log('appendChildMaterial', source, target)
+    log(`appendChildMaterial(source: ${source}, target: ${target}, index: ${index})`)
 
     const targetNode = findTreeNode(target)
     if (!targetNode) {
@@ -114,14 +115,15 @@ export const useDesigner = defineStore('designer', () => {
     }
 
     if (index === undefined) {
-      targetNode.children.push(newNode)
+      // Insert to head
+      targetNode.children.unshift(newNode)
     } else {
       targetNode.children.splice(index, 0, newNode)
     }
   }
 
   function removeTreeNode(id: CanvasTreeNodeId) {
-    console.log('removeTreeNode', id)
+    log(`removeTreeNode(node: ${id})`)
 
     const queue = [canvasData.value]
     while (queue.length > 0) {
@@ -138,18 +140,36 @@ export const useDesigner = defineStore('designer', () => {
     throw new Error(`[removeTreeNode]: Node ${id} not found`)
   }
 
+  function moveTreeNode(source: CanvasTreeNodeId, target: CanvasTreeNodeId, index?: number) {
+    log(`moveTreeNode(source: ${source}, target: ${target}, index: ${index})`)
+
+    // Remove source node
+    const sourceNode = findTreeNode(source)
+    removeTreeNode(source)
+
+    // Insert source node to target
+    const targetNode = findTreeNode(target)
+    if (index === undefined) {
+      targetNode.children!.unshift(sourceNode)
+    } else {
+      targetNode.children!.splice(index, 0, sourceNode)
+    }
+  }
+
   //
   // Canvas states
   //
 
   const canvasSelectedComponent = ref<CanvasTreeNode | null>(null)
 
-  /**
-   * Set current selected component of canvas by tree node id
-   */
   function setCanvasSelectedComponent(id: CanvasTreeNodeId) {
     canvasSelectedComponent.value = findTreeNode(id)
   }
+
+  const currentActiveDropArea = ref<{
+    id: CanvasTreeNodeId
+    direction: 'top' | 'bottom'
+  } | null>(null)
 
   return {
     materials,
@@ -163,6 +183,7 @@ export const useDesigner = defineStore('designer', () => {
     getIndexOfNode,
     insertChildMaterial,
     removeTreeNode,
+    moveTreeNode,
 
     canvasSelectedComponent,
     setCanvasSelectedComponent

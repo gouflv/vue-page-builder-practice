@@ -7,9 +7,12 @@
 <script setup lang="ts">
 import type { MaterialDecoration } from '@/materials'
 import { useDesigner } from '@/stores/designer'
-import { type DropResult } from '@/type'
+import { type DragItemFromMaterial, type DropResult } from '@/type'
+import debug from 'debug'
 import { type PropType } from 'vue'
 import { useDrag } from 'vue3-dnd'
+
+const log = debug('designer:material')
 
 const props = defineProps({
   data: {
@@ -24,7 +27,8 @@ const { insertChildMaterial } = designer
 const [collect, setNodeRef] = useDrag(() => {
   return {
     type: props.data.type,
-    item: () => ({
+    item: (): DragItemFromMaterial => ({
+      from: 'material',
       name: props.data.name
     }),
     options: {
@@ -33,7 +37,7 @@ const [collect, setNodeRef] = useDrag(() => {
     end: (item, monitor) => {
       const dropResult = monitor.getDropResult<DropResult>()
 
-      console.log('[Material]: drop', item, dropResult)
+      log('drop end', item, dropResult)
 
       if (!dropResult) {
         return
